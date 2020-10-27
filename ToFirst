@@ -1,0 +1,312 @@
+----------------------------------อันนี้ของ lab4/urls---------------------------------------------------------------
+"""LAB4 URL Configuration
+
+The `urlpatterns` list routes URLs to views. For more information please see:
+    https://docs.djangoproject.com/en/3.1/topics/http/urls/
+Examples:
+Function views
+    1. Add an import:  from my_app import views
+    2. Add a URL to urlpatterns:  path('', views.home, name='home')
+Class-based views
+    1. Add an import:  from other_app.views import Home
+    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
+Including another URLconf
+    1. Import the include() function: from django.urls import include, path
+    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+"""
+from django.contrib import admin
+from django.urls import path
+from report import views
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('ReportListAllInvoices', views.ReportListAllInvoices),
+    path('ReportProductsSold', views.ReportProductsSold),
+    path('ReportListAllProducts', views.ReportListAllProducts),
+    path('ReportListAllReceipts', views.ReportListAllReceipts),
+    path('ReportUnpaidInvoices', views.ReportUnpaidInvoices),
+    path('เฟิร์สสร้างเอง'),
+]
+
+-------------------------------------------สร้าง .html ใน templates----------report_list_all_receipts-------------------------
+{% extends 'index.html' %}
+
+{% block content %}
+    
+    <table class='table'>
+        <tr>
+            <th>#</th>
+            {% for name in column_name %}
+            <th>{{ name }} </th>
+            {% endfor %}
+        </tr>
+    {% for lineitem in data %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ lineitem.receipt_no }}</td>
+            <td>{{ lineitem.date }}</td>
+            <td>{{ lineitem.customer_code }}</td>
+            <td>{{ lineitem.customer_name }}</td>
+            <td>{{ lineitem.payment_medthod }}</td>
+            <td>{{ lineitem.payment_reference }}</td>
+            <td>{{ lineitem.remark }}</td>
+            <td>{{ lineitem.total_received }}</td>
+            <td>{{ lineitem.invoice_no }}</td>
+            <td>{{ lineitem.date }}</td>
+            <td>{{ lineitem.amount_paid_here }}</td>
+            
+        <tr>
+    {% endfor %}
+    
+    {% endblock %}
+    
+
+</body>
+</html>
+----------------------------------------------------------------------------------------------------
+---------------------report_unpaid_invoices.html--------------------------------------------------
+<html>
+<body>
+{% extends 'index.html' %}
+
+{% block content %}
+    
+    <table class='table'>
+        <tr>
+            <th>#</th>
+            {% for name in column_name %}
+            <th>{{ name }} </th>
+            {% endfor %}
+        </tr>
+    {% for lineitem in data1 %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ lineitem.invoice_no }}</td>
+            <td>{{ lineitem.invoice_date }}</td>
+            <td>{{ lineitem.customer_name }}</td>
+            <td>{{ lineitem.invoice_amount_due }}</td>
+            <td>{{ lineitem.invoice_amount_received }}</td>
+            <td>{{ lineitem.invoice_amount_not_paid }}</td>
+        <tr>
+    {% endfor %}
+    </table>
+    <div>
+    {% for lineitem in data2 %}
+        <p>Total invoice not paid: {{ lineitem.total_debt }}</p>
+        <p>Number of invoice not paid: {{ lineitem.number_of_invoices_not_paid }}</p>
+    {% endfor %}
+    
+    {% endblock %}
+    </div>
+
+</body>
+</html>
+----------------------------------------------------------------------------------------------------
+--------------------models.py--------------------------------------------
+from django.db import models
+
+# Create your models here.
+class Data(models.Model):
+    key = models.CharField(max_length=10,primary_key=True)
+    value = models.CharField(max_length=100)
+
+class Product(models.Model):
+    code = models.CharField(max_length=10,primary_key=True)
+    name = models.CharField(max_length=100)
+    units = models.CharField(max_length=10)
+    class Meta:
+        db_table = "product"
+        managed = False
+
+class Customer(models.Model):
+    customer_code = models.CharField(max_length=10, primary_key=True)
+    name = models.CharField(max_length=100, null=True)
+    address = models.CharField(max_length=100, null=True, blank=True)
+    credit_limit = models.FloatField(null=True, blank=True)
+    country = models.CharField(max_length=20, null=True, blank=True)
+    class Meta:
+        db_table = "customer"
+        managed = False
+
+class Invoice(models.Model):
+    invoice_no = models.CharField(max_length=10, primary_key=True)
+    date = models.DateField(null=True)
+    customer_code = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='customer', db_column='customer_code')
+    due_date = models.DateField(null=True, blank=True)
+    total = models.FloatField(null=True, blank=True)
+    vat = models.FloatField(null=True, blank=True)
+    amount_due = models.FloatField(null=True, blank=True)
+    class Meta:
+        db_table = "invoice"
+        managed = False
+
+class InvoiceLineItem(models.Model):
+    invoice_no = models.ForeignKey(Invoice, primary_key=True, on_delete=models.CASCADE, db_column='invoice_no')
+    product_code = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='product', db_column='product_code')
+    quantity = models.IntegerField(null=True)
+    unit_price = models.FloatField(null=True)
+    extended_price = models.FloatField(null=True)
+    class Meta:
+        db_table = "invoice_line_item"
+        unique_together = (("invoice_no", "product_code"),)
+        managed = False
+
+#Receipt
+class Receipt(models.Model):
+    receipt_no = models.CharField(max_length=10, primary_key=True)
+    receipt_date = models.DateField(null=True)
+    customer_code = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='customer', db_column='customer_code')
+    customer_name = models.CharField(max_length=100, null=True)
+    payment_method = models.CharField(max_length=20, null=True, blank=True)
+    payment_reference = models.CharField(max_length=20, null=True, blank=True)
+    remarks = models.CharField(max_length=20, null=True, blank=True)
+    vat = models.FloatField(null=True, blank=True)
+    total_received = models.FloatField(null=True, blank=True)
+    class Meta:
+        db_table = "receipt"
+        managed = False
+    
+class ReceiptLineItem(models.Model):
+    receipt_no = models.ForeignKey(Receipt, primary_key=True, on_delete=models.CASCADE, db_column='receipt_no')
+    invoice_no = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name='invoice', db_column='invoice_no')
+    date = models.DateField(null=True)
+    amount_paid_here = models.FloatField(null=True)
+    class Meta:
+        db_table = "receipt_line_item"
+        unique_together = (("receipt_no", "invoice_no"),)
+        managed = False    
+--------------------------views.py-------------------------
+from django.shortcuts import render
+from django.http import HttpResponse
+#from django.http import JsonResponse
+from report.models import *
+from .DBHelper import DBHelper
+# Create your views here.
+
+def index(request):
+    invoice_no = request.GET.get('inv','')
+    data_report = dict()
+    data_report['invoice'] = list(Invoice.objects.filter(invoice_no=invoice_no).select_related('customer_code').values('invoice_no', 'date', 'customer_code_id', 'customer_code__name','due_date','total','vat','amount_due'))
+    data_report['invoice_line_item'] = list(InvoiceLineItem.objects.filter(invoice_no=invoice_no).values())
+    #return JsonResponse(data_report)
+    return render(request, 'report_data.html', data_report)
+
+def ReportListAllInvoices(request):
+    db = DBHelper()
+    data, columns = db.fetch ('SELECT i.invoice_no as "Invoice No", i.date as "Date" '
+                            ' , i.customer_code as "Customer Code", c.name as "Customer Name" '
+                            ' , i.due_date as "Due Date", i.total as "Total", i.vat as "VAT", i.amount_due as "Amount Due" '
+                            ' , ili.product_code as "Product Code", p.name as "Product Name" '
+                            ' , ili.quantity as "Quantity", ili.unit_price as "Unit Price", ili.extended_price as "Extended Price" '
+                            ' FROM invoice i JOIN customer c ON i.customer_code = c.customer_code '
+                            '  JOIN invoice_line_item ili ON i.invoice_no = ili.invoice_no '
+                            '  JOIN product p ON ili.product_code = p.code '
+                            ' ')
+    data_report = dict()
+    data_report['data'] = CursorToDict (data,columns)
+    data_report['column_name'] = columns
+
+    return render(request, 'report_list_all_invoices.html', data_report)
+
+def ReportProductsSold(request):
+    db = DBHelper()
+    data, columns = db.fetch ('SELECT ili.product_code as "Product Code", p.name as "Product Name" '
+                              ' , SUM(ili.quantity) as "Total Quantity Sold", SUM(ili.extended_price) as "Total Value Sold" '
+                              ' FROM invoice i JOIN invoice_line_item ili ON i.invoice_no = ili.invoice_no '
+                              '   JOIN product p ON ili.product_code = p.code '
+                              ' GROUP BY p.code, ili.product_code, p.name '
+                            ' ')
+    data_report = dict()
+    data_report['data'] = CursorToDict (data,columns)
+    data_report['column_name'] = columns
+
+    return render(request, 'report_products_sold.html', data_report)
+
+def ReportListAllProducts(request):
+    db = DBHelper()
+    data, columns = db.fetch ('SELECT code as "Code", name as "Name", units as "Units" FROM product '
+                              ' ')
+    data_report = dict()
+    data_report['data'] = CursorToDict (data,columns)
+    data_report['column_name'] = columns
+
+    return render(request, 'report_list_all_products.html', data_report)
+
+def ReportListAllReceipts(request):
+    db = DBHelper()
+    data, columns = db.fetch ('SELECT r.receipt_no AS "Receipt No", r.receipt_date AS "Date" '
+                              ' , r.customer_code AS "Customer Code", c.name AS "Customer Name" '
+                              ' , r.payment_method	AS "Payment Medthod", r.payment_reference AS "Payment Reference" '
+                              ' , r.remarks AS "Remark", r.total_received AS "Total received" '
+                              ' , rli.invoice_no AS "Invoice no", i.date AS "Invoice Date" '
+                              ' , rli.amount_paid_here as "Amount paid here" '
+                              ' FROM receipt AS r' 
+                              ' JOIN customer AS c'
+                              '     ON r.customer_code = c.customer_code '
+                              ' JOIN receipt_line_item AS rli' 
+                              '      ON r.receipt_no = rli.receipt_no '
+                              ' JOIN invoice AS i'
+                              '      ON rli.invoice_no = i.invoice_no'
+                              ' ')
+    data_report = dict()
+    data_report['data'] = CursorToDict (data,columns)
+    data_report['column_name'] = columns
+    return render(request, 'report_list_all_receipts.html', data_report)
+
+def ReportUnpaidInvoices(request):
+    db = DBHelper()
+    data1, columns1 = db.fetch ('SELECT li.invoice_no AS "Invoice No", i.date AS "Invoice Date", \
+		                                c.name AS "Customer Name", i.amount_due AS "Invoice Amount Due", \
+		                                li."Invoice Amount Received", i.amount_due - li."Invoice Amount Received" AS "Invoice Amount Not Paid"  \
+                                FROM (SELECT invoice_no, SUM(amount_paid_here) AS "Invoice Amount Received" \
+	                                        FROM receipt_line_item \
+	                                        GROUP BY invoice_no) AS li \
+                                JOIN invoice AS i \
+	                                ON li.invoice_no = i.invoice_no \
+                                JOIN customer AS c \
+                                    ON i.customer_code = c.customer_code \
+                                WHERE i.amount_due - li."Invoice Amount Received" != 0'
+                                )
+    
+    data_report = dict()
+    data_report['data1'] = CursorToDict (data1,columns1)
+    data_report['column_name'] = columns1
+    
+    data2, columns2 = db.fetch ('SELECT SUM(i.amount_due - li.Invoice_Amount_Received) AS Total_debt,  COUNT(i.amount_due - li.Invoice_Amount_Received) AS Number_Of_Invoices_Not_Paid\
+                                    FROM (SELECT invoice_no, SUM(amount_paid_here) AS Invoice_Amount_Received \
+	                                        FROM receipt_line_item \
+	                            GROUP BY invoice_no) AS li \
+                                JOIN invoice AS i \
+	                                ON li.invoice_no = i.invoice_no \
+                                WHERE i.amount_due - li.Invoice_Amount_Received != 0'
+                                )
+
+    data_report['data2'] = CursorToDict (data2,columns2)
+    return render(request, 'report_unpaid_invoices.html', data_report)
+
+def สร้างตารางของตัวเอง
+
+
+
+def CursorToDict(data,columns):
+    result = []
+    fieldnames = [name.replace(" ", "_").lower() for name in columns]
+    for row in data:
+        rowset = []
+        for field in zip(fieldnames, row):
+            rowset.append(field)
+        result.append(dict(rowset))
+    return result
+    -----------------------------------------------------------------------------------------------------------------------
+    
+
+
+
+
+
+
+
+
+    
+   
+
